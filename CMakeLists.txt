@@ -8,7 +8,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/workspace)
 
 # 如果你是不同显卡，请设置为显卡对应的号码参考这里：https://developer.nvidia.com/zh-cn/cuda-gpus#compute
-set(CUDA_GEN_CODE "-gencode=arch=compute_86,code=sm_86")
+set(CUDA_GEN_CODE "-gencode=arch=compute_75,code=sm_75")
 
 # 如果你的opencv找不到，可以自己指定目录
 set(OpenCV_DIR   "/usr/local/include/opencv4")
@@ -18,8 +18,8 @@ set(CUDNN_DIR    "/usr/soft/cudnn-linux-x86_64-8.4.1.50_cuda11.6-archive")
 set(TENSORRT_DIR "/usr/soft/TensorRT-8.2.4.2")
 
 #链接大华sdk库
-include_directories(/usr/soft/dhSDK/include)
-link_directories(/usr/soft/dhSDK/lib/)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparts/dhSDK/include)
+link_directories(${PROJECT_SOURCE_DIR}/3rdparts/dhSDK/lib/)
 
 # set(CUDA_DIR     "/data/sxai/lean/cuda-10.2")
 # set(CUDNN_DIR    "/data/sxai/lean/cudnn7.6.5.32-cuda10.2")
