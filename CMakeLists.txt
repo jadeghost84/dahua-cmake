@@ -8,31 +8,23 @@ set(CMAKE_BUILD_TYPE Debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/workspace)
 
 # 如果你是不同显卡，请设置为显卡对应的号码参考这里：https://developer.nvidia.com/zh-cn/cuda-gpus#compute
-set(CUDA_GEN_CODE "-gencode=arch=compute_75,code=sm_75")
+set(CUDA_GEN_CODE "-gencode=arch=compute_86,code=sm_86")
 
 # 如果你的opencv找不到，可以自己指定目录
 set(OpenCV_DIR   "/usr/local/include/opencv4")
 
-set(CUDA_DIR     "/usr/local/cuda-11.2")
-set(CUDNN_DIR    "/usr/soft/cudnn-linux-x86_64-8.4.1.50_cuda11.6-archive")
-set(TENSORRT_DIR "/usr/soft/TensorRT-8.2.4.2")
-
+set(CUDA_DIR     "/usr/local/cuda-11.7")
+set(CUDNN_DIR    "/usr/soft/cudnn-linux-x86_64-8.4.0.27_cuda11.6-archive")
+set(TENSORRT_DIR "/usr/soft/TensorRT-8.4.1.5")
+set(PROTOBUF_DIR "/usr/local")
 #链接大华sdk库
 include_directories(${PROJECT_SOURCE_DIR}/3rdparts/dhSDK/include)
 link_directories(${PROJECT_SOURCE_DIR}/3rdparts/dhSDK/lib/)
 
-# set(CUDA_DIR     "/data/sxai/lean/cuda-10.2")
-# set(CUDNN_DIR    "/data/sxai/lean/cudnn7.6.5.32-cuda10.2")
-# set(TENSORRT_DIR "/data/sxai/lean/TensorRT-7.0.0.11")
-
-# set(CUDA_DIR     "/data/sxai/lean/cuda-11.1")
-# set(CUDNN_DIR    "/data/sxai/lean/cudnn8.2.2.26")
-# set(TENSORRT_DIR "/data/sxai/lean/TensorRT-7.2.1.6")
-
 find_package(CUDA REQUIRED)
 find_package(OpenCV)
-
 include_directories(
+    ${PROTOBUF_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
     ${OpenCV_INCLUDE_DIRS}
     ${CUDA_DIR}/include
@@ -43,6 +35,7 @@ include_directories(
 # 切记，protobuf的lib目录一定要比tensorRT目录前面，因为tensorRTlib下带有protobuf的so文件
 # 这可能带来错误
 link_directories(
+    ${PROTOBUF_DIR}/lib
     ${TENSORRT_DIR}/lib
     ${CUDA_DIR}/lib64
     ${CUDNN_DIR}/lib

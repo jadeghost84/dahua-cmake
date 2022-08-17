@@ -13,7 +13,7 @@
 #include <future>
 #include <thread>
 using namespace std;
-typedef void (*matCallbackfun)(cv::Mat);
+typedef void (*matCallbackfun)(cv::Mat,LONG);
 
 struct Device {
 	char* name;//设备名称

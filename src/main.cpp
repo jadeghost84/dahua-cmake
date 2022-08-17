@@ -228,7 +228,8 @@ int initUDP(const char *_udp_ip, int udp_port)
     // t1.join();
 }
 FILE *fp1 = nullptr;
-void handleCallBack1(cv::Mat mat)
+FILE *fp2 = nullptr;
+void handleCallBack(cv::Mat mat,LONG nPort)
 {
     detect(mat);
     //  基于当前系统的当前日期/时间
@@ -237,22 +238,10 @@ void handleCallBack1(cv::Mat mat)
     char *dt = ctime(&now);
     //std::cout << dt << std::endl;
     //fwrite(mat.data, sizeof(char), mat.total() * mat.elemSize(), fp1);
-    imshow("hello",mat);
+    imshow(to_string(nPort),mat);
     cv::waitKey(1);
 }
-FILE *fp2 = nullptr;
-void handleCallBack2(cv::Mat mat)
-{
-    detect(mat);
-    //  基于当前系统的当前日期/时间
-    time_t now = time(0);
-    // 把 now 转换为字符串形式
-    char *dt = ctime(&now);
-    //std::cout << dt << std::endl;
-    //fwrite(mat.data, sizeof(char), mat.total() * mat.elemSize(), fp2);
-    imshow("hello1",mat);
-    cv::waitKey(1);
-}
+
 
 bool is_running = true;
 
@@ -291,13 +280,17 @@ int pushStream(FILE *fp ,string rtmp_server_url)
     return EXIT_SUCCESS;
 }
 
-Device d1 = { "设备1","192.168.2.102",37777, "admin", "csis0123",0 ,{"model1","model2","model3","model4"},{handleCallBack1} };
-Device d2 = { "设备2", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack2} };
+Device d1 = { "设备1","192.168.2.102",37777, "admin", "csis0123",0 ,{"model1","model2","model3","model4"},{handleCallBack} };
+Device d2 = { "设备2", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
+Device d3 = { "设备3", "192.168.2.102",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
+Device d4 = { "设备4", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
+Device d5 = { "设备5", "192.168.2.102",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
+Device d6 = { "设备6", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
 vector<Device> devices = { d1,d2};
 int main()
 {
 
-    createEngine(SimpleYolo::Type::V7, SimpleYolo::Mode::FP32, "yolov7");
+    createEngine(SimpleYolo::Type::V7, SimpleYolo::Mode::FP16, "yolov7");
   
     //pushStream(fp1,"rtmp://192.168.2.9:1935/live/1");
     //pushStream(fp2,"rtmp://192.168.2.9:1935/live/2");
