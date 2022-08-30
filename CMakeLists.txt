@@ -21,11 +21,15 @@ set(PROTOBUF_DIR "/usr/local")
 include_directories(${PROJECT_SOURCE_DIR}/3rdparts/dhSDK/include)
 link_directories(${PROJECT_SOURCE_DIR}/3rdparts/dhSDK/lib/)
 
+
+#链接ffmpeg库
+include_directories(/usr/soft/FFmpeg-master/target/include)
+link_directories(/usr/soft/FFmpeg-master/target/lib)
+
 find_package(CUDA REQUIRED)
 find_package(OpenCV)
 include_directories(
     ${PROTOBUF_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src
     ${OpenCV_INCLUDE_DIRS}
     ${CUDA_DIR}/include
     ${TENSORRT_DIR}/include
@@ -47,17 +51,19 @@ file(GLOB_RECURSE cpp_srcs ${PROJECT_SOURCE_DIR}/src/*.cpp)
 file(GLOB_RECURSE cuda_srcs ${PROJECT_SOURCE_DIR}/src/*.cu)
 cuda_add_library(cucodes SHARED ${cuda_srcs})
 
-add_executable(pro ${cpp_srcs})
+add_executable(${PROJECT_NAME} ${cpp_srcs})
 
 # 如果提示插件找不到，请使用dlopen(xxx.so, NOW)的方式手动加载可以解决插件找不到问题
 target_link_libraries(cucodes nvinfer nvonnxparser)
 target_link_libraries(cucodes cuda cublas cudart cudnn)
-target_link_libraries(pro ${OpenCV_LIBS})
-target_link_libraries(pro cucodes)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} cucodes)
 target_link_libraries(${PROJECT_NAME}
   "avnetsdk";"dhconfigsdk";"dhnetsdk";"dhplay";"HWDec";"IvsDrawer";"StreamConvertor"
 )
-
+target_link_libraries(${PROJECT_NAME}
+avfilter avformat avcodec avutil swscale
+)
 add_custom_target(
     run
     DEPENDS pro

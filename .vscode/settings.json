@@ -1,11 +1,15 @@
 {
     "files.associations": {
+        "chrono": "cpp",
+        "ostream": "cpp",
+        "*.tcc": "cpp",
+        "ios": "cpp",
+        "__config": "cpp",
+        "__nullptr": "cpp",
         "array": "cpp",
         "atomic": "cpp",
-        "*.tcc": "cpp",
         "bitset": "cpp",
         "cctype": "cpp",
-        "chrono": "cpp",
         "clocale": "cpp",
         "cmath": "cpp",
         "codecvt": "cpp",
@@ -53,12 +57,12 @@
         "limits": "cpp",
         "mutex": "cpp",
         "new": "cpp",
-        "ostream": "cpp",
         "sstream": "cpp",
         "stdexcept": "cpp",
         "streambuf": "cpp",
         "thread": "cpp",
+        "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "__nullptr": "cpp"
+        "__bit_reference": "cpp"
     }
 }

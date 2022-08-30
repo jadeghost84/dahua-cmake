@@ -1,12 +1,10 @@
 
 #include "simple_yolo.hpp"
 #include "DHConnection.h"
-#include <ctime>
-#include <thread>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <csignal>
+
+#include "heads.h"
+#include "PushStream.h"
+
 #if defined(_WIN32)
 #include <Windows.h>
 #include <wingdi.h>
@@ -154,12 +152,8 @@ static void createEngine(SimpleYolo::Type type, SimpleYolo::Mode mode, const str
             1 << 30,
             "inference");
     }
-    engine = SimpleYolo::create_infer(model_file, type, deviceid, 0.4f, 0.5f);
+    engine = SimpleYolo::create_infer(model_file, type, deviceid, 0.5f, 0.5f);
 }
-
-int sockfd;
-socklen_t sockaddr_in_len = sizeof(struct sockaddr_in);
-struct sockaddr_in serveraddr;
 void detect(cv::Mat &mat)
 {
 
@@ -169,7 +163,9 @@ void detect(cv::Mat &mat)
         return;
     }
     // warmup
-    auto boxes = engine->commit(mat).get();
+    SimpleYolo::BoxArray boxes;
+    boxes = engine->commit(mat).get();
+
     for (auto &obj : boxes)
     {
         uint8_t b, g, r;
@@ -181,67 +177,26 @@ void detect(cv::Mat &mat)
         cv::rectangle(mat, cv::Point(obj.left - 3, obj.top - 33), cv::Point(obj.left + width, obj.top), cv::Scalar(b, g, r), -1);
         cv::putText(mat, caption, cv::Point(obj.left, obj.top - 5), 0, 1, cv::Scalar::all(0), 2, 16);
     }
-
-    std::string res_str = "ss";
-    res_str = "{" + res_str + "}";
-    sendto(sockfd, res_str.c_str(), strlen(res_str.c_str()), 0, (struct sockaddr *)&serveraddr, sockaddr_in_len);
 }
-void getClient(){
-    while (1)
-    {
-        /*********接收来自客户端的数据*********/
-        char buffer[1024];           //用于存放对方发送的数据
-        struct sockaddr_in src;      //用于保存对端的地址信息
-        socklen_t len = sizeof(src); //对端地址信息的大小
-        recvfrom(sockfd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&src, &len);
-        std::cout << "client# " << buffer << std::endl;
+FILE *fp = nullptr;
+PushStream pushStream = PushStream("192.168.2.23:8554");
 
-        std::string msg = "收到来自客户端的信息：";
-        msg.append(buffer);
-        sendto(sockfd, msg.c_str(), msg.size(), 0, (struct sockaddr *)&src, len);
-    }
-}
-int initUDP(const char *_udp_ip, int udp_port)
+void handleCallBack(cv::Mat mat, LONG nPort)
 {
-    /*********** udp初始化 ***************/
-    std::string udp_ip = udp_ip;
-    memset(&serveraddr, 0, sockaddr_in_len);
-    //填充upd 服务器自身的信息
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(8081);
-    serveraddr.sin_addr.s_addr = inet_addr("192.168.2.28");
-    //注意此处是udp协议,用SOCK_DGRAM
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0)
-    {
-        perror("fail to socket\n\n");
-        return -1;
-    }
-    // int ret = bind(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
-    // if (ret < 0)
-    // {
-    //     //说明绑定失败
-    //     std::cerr << "bind绑定失败" << errno << std::endl;
-    //     return 2;
-    // }
-    // std::thread t1(getClient);
-    // t1.join();
-}
-FILE *fp1 = nullptr;
-FILE *fp2 = nullptr;
-void handleCallBack(cv::Mat mat,LONG nPort)
-{
-    detect(mat);
-    //  基于当前系统的当前日期/时间
-    time_t now = time(0);
-    // 把 now 转换为字符串形式
-    char *dt = ctime(&now);
-    //std::cout << dt << std::endl;
-    //fwrite(mat.data, sizeof(char), mat.total() * mat.elemSize(), fp1);
-    imshow(to_string(nPort),mat);
-    cv::waitKey(1);
-}
 
+    //  pushStream.doPush(mat);
+    /*********** 推流 ***************/
+    auto dst = mat.clone();
+    // fwrite(dst.data, sizeof(uchar), dst.total() * dst.elemSize(), fp);
+    // fwrite(mat.data, sizeof(char), mat.total() * mat.elemSize(), fp);
+    auto beginTime = std::chrono::high_resolution_clock::now();
+    detect(dst);
+    //imshow(to_string(nPort), dst);
+    //cv::waitKey(1);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - beginTime);
+    //std::cout << (double)elapsedTime.count() << std::endl;
+}
 
 bool is_running = true;
 
@@ -249,7 +204,8 @@ void OnSignal(int)
 {
     is_running = false;
 }
-int pushStream(FILE *fp ,string rtmp_server_url)
+
+int pushStreamByDirective(string rtsp_server_url)
 {
 
     // 触发下面的信号就退出
@@ -257,7 +213,7 @@ int pushStream(FILE *fp ,string rtmp_server_url)
     signal(SIGQUIT, OnSignal);
     signal(SIGTERM, OnSignal);
     std::stringstream command;
-    command << "ffmpeg ";
+    command << "/usr/soft/FFmpeg-master/target/bin/ffmpeg ";
     // infile options
     command << "-y "               // overwrite output files
             << "-an "              // disable audio
@@ -265,7 +221,7 @@ int pushStream(FILE *fp ,string rtmp_server_url)
             << "-vcodec rawvideo " // force video rawvideo ('copy' to copy stream)
             << "-pix_fmt bgr24 "   // set pixel format to bgr24
             << "-s 1920x1080 "     // set frame size (WxH or abbreviation)
-            << "-r 25 ";           // set frame rate (Hz value, fraction or abbreviation)
+            << "-thread_queue_size 512 ";
 
     command << "-i - "; //
 
@@ -273,42 +229,38 @@ int pushStream(FILE *fp ,string rtmp_server_url)
     command << "-c:v libx264 "      // Hyper fast Audio and Video encoder
             << "-pix_fmt yuv420p "  // set pixel format to yuv420p
             << "-preset ultrafast " // set the libx264 encoding preset to ultrafast
-            << "-f flv "            // force format to flv
-            << "-flvflags no_duration_filesize "
-            << rtmp_server_url;
-    fp1 = popen(command.str().c_str(), "w");
+            << "-f rtsp "           // force format to flv
+            << "-rtsp_transport tcp "
+            << rtsp_server_url;
+    fp = popen(command.str().c_str(), "w");
     return EXIT_SUCCESS;
 }
 
-Device d1 = { "设备1","192.168.2.102",37777, "admin", "csis0123",0 ,{"model1","model2","model3","model4"},{handleCallBack} };
-Device d2 = { "设备2", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
-Device d3 = { "设备3", "192.168.2.102",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
-Device d4 = { "设备4", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
-Device d5 = { "设备5", "192.168.2.102",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
-Device d6 = { "设备6", "192.168.2.101",37777, "admin", "csis0123",0,{"model1","model2","model3"} ,{handleCallBack} };
-vector<Device> devices = { d1,d2};
+Device d1 = {"设备1", "192.168.2.102", 37777, "admin", "csis0123", 0, {"model1", "model2", "model3", "model4"}, {handleCallBack}};
+Device d2 = {"设备2", "192.168.2.101", 37777, "admin", "csis0123", 0, {"model1", "model2", "model3"}, {handleCallBack}};
+Device d3 = {"设备3", "192.168.2.168", 37777, "admin", "admin123456", 0, {"model1", "model2", "model3"}, {handleCallBack}};
+Device d4 = {"设备4", "192.168.2.103", 37777, "admin", "admin123", 0, {"model1", "model2", "model3"}, {handleCallBack}};
+vector<Device> devices = {d1, d2, d3, d4, d1, d2, d3, d4};
 int main()
 {
-
+    // pushStream.createStream();
     createEngine(SimpleYolo::Type::V7, SimpleYolo::Mode::FP16, "yolov7");
-  
-    //pushStream(fp1,"rtmp://192.168.2.9:1935/live/1");
-    //pushStream(fp2,"rtmp://192.168.2.9:1935/live/2");
-    const char *__upd_ip = "192.168.2.28";
-    // int __udp_port = 8080;
-    // initUDP(__upd_ip, __udp_port);
-	DHConnection dHconnect = DHConnection();
-	bool initSDKResult = dHconnect.initSDK();
-	//添加设备
-	vector<Device>::iterator it = devices.begin();
-	for (; it != devices.end(); ++it)
-	{
-		dHconnect.addDevice((*it));
-	}
-	dHconnect.startPlay();
-	sleep(1000000);
-	dHconnect.closePlay();
-    pclose(fp1);
-    pclose(fp2);
+
+    // pushStreamByDirective("rtsp://192.168.2.23:8554/live/1");
+    //   pushStreamByDirective(fp2,"rtmp://192.168.2.9:1935/live/2");
+    DHConnection dHconnect = DHConnection();
+    bool initSDKResult = dHconnect.initSDK();
+    //添加设备
+    vector<Device>::iterator it = devices.begin();
+    for (; it != devices.end(); ++it)
+    {
+        dHconnect.addDevice((*it));
+    }
+    dHconnect.startPlay();
+    dHconnect.frame_read("设备1");
+    sleep(1000000);
+    dHconnect.closePlay();
+    pclose(fp);
+    // pclose(fp2);
     return 0;
 }

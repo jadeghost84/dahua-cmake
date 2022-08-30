@@ -1,15 +1,11 @@
+
 #ifndef SIMPLE_YOLO_HPP
 #define SIMPLE_YOLO_HPP
 
 /*
   简单的yolo接口，容易集成但是高性能
 */
-
-#include <vector>
-#include <memory>
-#include <string>
-#include <future>
-#include <opencv2/opencv.hpp>
+#include "heads.h"
 
 namespace SimpleYolo{
 
@@ -66,7 +62,7 @@ namespace SimpleYolo{
         unsigned int max_batch_size,
         const string& source_onnx,
         const string& saveto,
-        size_t max_workspace_size = 1<<30,
+        size_t max_workspace_size = 1<<32,
         const std::string& int8_images_folder = "",
         const std::string& int8_entropy_calibrator_cache_file = ""
     );
